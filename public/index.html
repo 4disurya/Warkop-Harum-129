@@ -410,7 +410,17 @@
         <div class="rounded-panel bg-white p-5 shadow-soft">
           <div class="flex items-center justify-between gap-2">
             <h1 class="text-[22px] font-bold text-textprimary">Dashboard Admin</h1>
-            <span class="rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-white">Admin</span>
+            <div class="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                class="tap-44 btn-press rounded-pill px-3 py-1.5 text-[11px] font-bold"
+                :class="notifOn ? 'bg-primary text-white' : 'bg-bgmain text-textsecondary'"
+                :aria-pressed="notifOn ? 'true' : 'false'"
+                aria-label="Notifikasi suara order"
+                @click="toggleNotif"
+              >{{ notifOn ? 'Suara ON' : 'Suara OFF' }}</button>
+              <span class="rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-white">Admin</span>
+            </div>
           </div>
 
           <nav class="mt-4 flex gap-2" aria-label="Tab admin">
@@ -704,6 +714,8 @@
     const LS_ORDERS = 'wh_orders';
     const SS_ADMIN = 'wh_admin';
     const LS_CLIENT = 'wh_client_id';
+    const LS_NOTIF = 'wh_notif';
+    const NOTIF_POLL_MS = 10000;
 
     function getClientId() {
       try {
@@ -715,6 +727,41 @@
         return id;
       } catch (_) {
         return 'anon';
+      }
+    }
+
+    // ===== Notifikasi suara order (Web Audio, tanpa file aset) =====
+    let _audioCtx = null;
+    function ensureAudio_() {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        if (!_audioCtx) _audioCtx = new AC();
+        if (_audioCtx.state === 'suspended') _audioCtx.resume();
+        return _audioCtx;
+      } catch (_) {
+        return null;
+      }
+    }
+    function playOrderDing_() {
+      const ctx = ensureAudio_();
+      if (!ctx) return;
+      const t0 = ctx.currentTime + 0.02;
+      const notes = [880, 1318.51];
+      for (let i = 0; i < notes.length; i++) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const start = t0 + i * 0.18;
+        const dur = 0.28;
+        osc.type = 'sine';
+        osc.frequency.value = notes[i];
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(0.22, start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + dur + 0.05);
       }
     }
 
@@ -971,6 +1018,8 @@
           loginError: '',
           adminTab: 'menu',
           orders: [],
+          notifOn: true,
+          lastNotifiedOrderId: '',
           txSearch: '',
           txPeriod: 'all',
           txStatus: 'all',
@@ -1084,6 +1133,7 @@
         },
       },
       created() {
+        this.notifTimer = null;
         this.hash = window.location.hash || '#/';
         window.addEventListener('hashchange', () => {
           this.hash = window.location.hash || '#/';
@@ -1094,13 +1144,30 @@
         } catch (_) {
           this.isAdmin = false;
         }
+        try {
+          this.notifOn = localStorage.getItem(LS_NOTIF) !== '0';
+        } catch (_) {
+          this.notifOn = true;
+        }
         this.loadMenus();
-        if (this.isAdmin) this.loadOrders();
+        if (this.isAdmin) {
+          this.loadOrders({ detectNew: false });
+          this.startOrderPolling();
+        }
         try {
           const saved = localStorage.getItem('wh_cart');
           if (saved) this.cart = JSON.parse(saved);
         } catch (_) {}
         this.guardAdmin();
+      },
+      beforeUnmount() {
+        this.stopOrderPolling();
+        try {
+          if (_audioCtx) {
+            _audioCtx.close();
+            _audioCtx = null;
+          }
+        } catch (_) {}
       },
       methods: {
         go(path) {
@@ -1132,7 +1199,9 @@
               sessionStorage.setItem(SS_ADMIN, '1');
             } catch (_) {}
             this.menuOpen = false;
-            this.loadOrders();
+            ensureAudio_();
+            this.loadOrders({ detectNew: false });
+            this.startOrderPolling();
             this.go('#/admin');
           } else {
             this.loginError = 'Password salah.';
@@ -1141,6 +1210,7 @@
         adminLogout() {
           this.isAdmin = false;
           this.menuOpen = false;
+          this.stopOrderPolling();
           try {
             sessionStorage.removeItem(SS_ADMIN);
           } catch (_) {}
@@ -1158,9 +1228,39 @@
           this.menus = Array.isArray(res.data) ? res.data : [];
           this.loading = false;
         },
-        async loadOrders() {
+        async loadOrders(opts) {
+          const detectNew = !!(opts && opts.detectNew);
           const res = await apiGetOrders();
-          this.orders = Array.isArray(res.data) ? res.data : [];
+          const list = Array.isArray(res.data) ? res.data : [];
+          this.orders = list;
+          const newest = list.length ? String(list[0].order_id) : '';
+          if (!detectNew) {
+            this.lastNotifiedOrderId = newest;
+            return;
+          }
+          if (newest && newest !== this.lastNotifiedOrderId) {
+            this.lastNotifiedOrderId = newest;
+            if (this.notifOn) playOrderDing_();
+          }
+        },
+        startOrderPolling() {
+          this.stopOrderPolling();
+          this.notifTimer = setInterval(() => {
+            if (this.isAdmin) this.loadOrders({ detectNew: true });
+          }, NOTIF_POLL_MS);
+        },
+        stopOrderPolling() {
+          if (this.notifTimer) {
+            clearInterval(this.notifTimer);
+            this.notifTimer = null;
+          }
+        },
+        toggleNotif() {
+          this.notifOn = !this.notifOn;
+          try {
+            localStorage.setItem(LS_NOTIF, this.notifOn ? '1' : '0');
+          } catch (_) {}
+          if (this.notifOn) ensureAudio_();
         },
         openMenuForm(item) {
           this.menuFormError = '';
@@ -1392,7 +1492,7 @@
           this.cart = [];
           this.persistCart();
           this.form = { nama: '', noMeja: '' };
-          if (this.isAdmin) this.loadOrders();
+          if (this.isAdmin) this.loadOrders({ detectNew: true });
           this.go('#/sukses');
         },
       },
