@@ -436,6 +436,12 @@
               :class="adminTab === 'transaksi' ? 'bg-primary text-white' : 'bg-bgmain text-textsecondary'"
               @click="adminTab = 'transaksi'"
             >Transaksi</button>
+            <button
+              type="button"
+              class="btn-press flex-1 rounded-pill py-2.5 text-sm font-bold"
+              :class="adminTab === 'history' ? 'bg-primary text-white' : 'bg-bgmain text-textsecondary'"
+              @click="adminTab = 'history'"
+            >History</button>
           </nav>
 
           <!-- Tab: Menu -->
@@ -478,15 +484,15 @@
           </section>
 
           <!-- Tab: Transaksi -->
-          <section v-else class="mt-5">
+          <section v-else-if="adminTab === 'transaksi'" class="mt-5">
             <div class="grid grid-cols-2 gap-3">
-              <div class="rounded-input bg-bgmain p-3">
-                <p class="text-xs text-textsecondary">Total transaksi</p>
-                <p class="mt-0.5 text-sm font-bold text-textprimary">{{ filteredOrders.length }} order</p>
-              </div>
               <div class="rounded-input bg-primary/10 p-3">
-                <p class="text-xs text-primary">Total utang (belum lunas)</p>
-                <p class="mt-0.5 text-sm font-bold text-primary">{{ rupiah(totalUtang) }}</p>
+                <p class="text-xs text-primary">Total pemasukan (Lanjut)</p>
+                <p class="mt-0.5 text-sm font-bold text-primary">{{ rupiah(totalPemasukan) }}</p>
+              </div>
+              <div class="rounded-input bg-bgmain p-3">
+                <p class="text-xs text-textsecondary">Utang (lanjut · belum lunas)</p>
+                <p class="mt-0.5 text-sm font-bold text-textprimary">{{ rupiah(totalUtang) }}</p>
               </div>
             </div>
 
@@ -526,30 +532,130 @@
             </p>
 
             <ul v-else class="mt-4 space-y-3">
-              <li v-for="o in filteredOrders" :key="o.order_id" class="rounded-input border border-bgmain p-3">
-                <div class="flex items-start justify-between gap-2">
-                  <div class="min-w-0">
-                    <p class="text-sm font-bold text-textprimary">
-                      #{{ o.order_id }}
-                      <span
-                        class="ml-1 rounded-full px-2 py-0.5 text-[10px] font-bold"
-                        :class="o.status_pembayaran === 'lunas' ? 'bg-primary text-white' : 'bg-bgmain text-textsecondary'"
-                      >{{ o.status_pembayaran === 'lunas' ? 'Lunas' : 'Belum' }}</span>
-                    </p>
-                    <p class="truncate text-xs text-textsecondary">
-                      {{ o.nama_pelanggan }} · Meja {{ o.no_meja }} · {{ formatDate(o.timestamp) }}
-                    </p>
-                  </div>
-                  <p class="shrink-0 text-sm font-bold text-primary">{{ rupiah(o.total_bayar) }}</p>
-                </div>
+              <li
+                v-for="o in filteredOrders"
+                :key="o.order_id"
+                class="rounded-input border border-bgmain"
+              >
                 <button
                   type="button"
-                  class="btn-press mt-2 w-full rounded-pill py-2 text-xs font-bold"
-                  :class="o.status_pembayaran === 'lunas' ? 'bg-bgmain text-textprimary' : 'bg-primary text-white'"
-                  @click="togglePayment(o)"
+                  class="btn-press w-full p-3 text-left"
+                  @click="toggleExpand(o.order_id)"
                 >
-                  {{ o.status_pembayaran === 'lunas' ? 'Tandai Belum Lunas' : 'Tandai Lunas' }}
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0">
+                      <p class="text-sm font-bold text-textprimary">
+                        #{{ o.order_id }}
+                        <span
+                          class="ml-1 rounded-full px-2 py-0.5 text-[10px] font-bold"
+                          :class="txBadgeClass(o.status_transaksi)"
+                        >{{ txLabel(o.status_transaksi) }}</span>
+                        <span
+                          class="ml-1 rounded-full px-2 py-0.5 text-[10px] font-bold"
+                          :class="o.status_pembayaran === 'lunas' ? 'bg-primary text-white' : 'bg-bgmain text-textsecondary'"
+                        >{{ o.status_pembayaran === 'lunas' ? 'Lunas' : 'Belum' }}</span>
+                      </p>
+                      <p class="truncate text-xs text-textsecondary">
+                        {{ o.nama_pelanggan }} · Meja {{ o.no_meja }} · {{ formatDate(o.timestamp) }}
+                      </p>
+                    </div>
+                    <p class="shrink-0 text-sm font-bold text-primary">{{ rupiah(o.total_bayar) }}</p>
+                  </div>
+                  <p class="mt-1 text-[11px] font-semibold text-textsecondary">
+                    {{ expandedOrderId === o.order_id ? 'Tutup detail ▲' : 'Lihat detail ▼' }}
+                  </p>
                 </button>
+
+                <div v-if="expandedOrderId === o.order_id" class="border-t border-bgmain p-3">
+                  <p class="text-xs font-bold uppercase tracking-wide text-textsecondary">Detail pesanan</p>
+                  <ul class="mt-2 space-y-1.5">
+                    <li
+                      v-for="(l, li) in orderLines(o)"
+                      :key="li"
+                      class="flex items-start justify-between gap-2 text-xs"
+                    >
+                      <div class="min-w-0">
+                        <p class="font-semibold text-textprimary">{{ l.nama }} × {{ l.qty }}</p>
+                        <p v-if="l.catatan" class="text-textsecondary">Catatan: {{ l.catatan }}</p>
+                      </div>
+                      <p class="shrink-0 font-bold text-primary">{{ rupiah((l.harga || 0) * (l.qty || 0)) }}</p>
+                    </li>
+                    <li v-if="orderLines(o).length === 0" class="text-xs text-textsecondary">
+                      Tidak ada rincian item.
+                    </li>
+                  </ul>
+
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    <button
+                      v-if="o.status_transaksi !== 'batal'"
+                      type="button"
+                      class="btn-press flex-1 rounded-pill py-2 text-xs font-bold"
+                      :class="o.status_pembayaran === 'lunas' ? 'bg-bgmain text-textprimary' : 'bg-primary text-white'"
+                      :disabled="actionBusy"
+                      @click="togglePayment(o)"
+                    >
+                      {{ o.status_pembayaran === 'lunas' ? 'Tandai Belum Lunas' : 'Tandai Lunas' }}
+                    </button>
+                    <button
+                      v-if="o.status_transaksi === 'pending'"
+                      type="button"
+                      class="btn-press flex-1 rounded-pill bg-surfacedark py-2 text-xs font-bold text-white"
+                      :disabled="actionBusy"
+                      @click="setOrderStatus(o, 'lanjut')"
+                    >Lanjutkan</button>
+                    <button
+                      v-if="o.status_transaksi === 'pending' || o.status_transaksi === 'lanjut'"
+                      type="button"
+                      class="btn-press flex-1 rounded-pill border border-primary py-2 text-xs font-bold text-primary"
+                      :disabled="actionBusy"
+                      @click="setOrderStatus(o, 'batal')"
+                    >Batalkan</button>
+                  </div>
+                  <p v-if="actionError" class="mt-2 text-xs font-semibold text-primary">{{ actionError }}</p>
+                </div>
+              </li>
+            </ul>
+          </section>
+
+          <!-- Tab: History -->
+          <section v-else class="mt-5">
+            <div class="grid grid-cols-2 gap-3">
+              <div class="rounded-input bg-bgmain p-3">
+                <p class="text-xs text-textsecondary">Total terjual</p>
+                <p class="mt-0.5 text-sm font-bold text-textprimary">{{ historyTotalQty }} item</p>
+              </div>
+              <div class="rounded-input bg-primary/10 p-3">
+                <p class="text-xs text-primary">Omzet item (Lanjut)</p>
+                <p class="mt-0.5 text-sm font-bold text-primary">{{ rupiah(historyTotalOmzet) }}</p>
+              </div>
+            </div>
+
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button
+                v-for="p in histPeriods"
+                :key="p.key"
+                type="button"
+                class="btn-press rounded-pill px-3 py-2 text-xs font-bold"
+                :class="histPeriod === p.key ? 'bg-primary text-white' : 'bg-bgmain text-textsecondary'"
+                @click="histPeriod = p.key"
+              >{{ p.label }}</button>
+            </div>
+
+            <p v-if="historyItems.length === 0" class="mt-6 text-center text-sm text-textsecondary">
+              Belum ada order Lanjut pada periode ini.
+            </p>
+
+            <ul v-else class="mt-4 space-y-3">
+              <li
+                v-for="h in historyItems"
+                :key="h.id"
+                class="flex items-center justify-between gap-3 rounded-input bg-bgmain p-3"
+              >
+                <div class="min-w-0">
+                  <p class="truncate text-sm font-bold text-textprimary">{{ h.nama }}</p>
+                  <p class="text-xs text-textsecondary">{{ h.qty }} terjual</p>
+                </div>
+                <p class="shrink-0 text-sm font-bold text-primary">{{ rupiah(h.omzet) }}</p>
               </li>
             </ul>
           </section>
@@ -790,12 +896,12 @@
     }
     function seedOrders() {
       return [
-        { order_id: 'ORD100001', timestamp: daysAgoISO(0, 9), nama_pelanggan: 'Budi Santoso', no_meja: '3', detail_pesanan: '[]', subtotal: 35000, service_fee: 0, total_bayar: 35000, status_pembayaran: 'belum' },
-        { order_id: 'ORD100002', timestamp: daysAgoISO(0, 12), nama_pelanggan: 'Siti Aminah', no_meja: '7', detail_pesanan: '[]', subtotal: 48000, service_fee: 0, total_bayar: 48000, status_pembayaran: 'lunas' },
-        { order_id: 'ORD100003', timestamp: daysAgoISO(1, 11), nama_pelanggan: 'Andi Wijaya', no_meja: '1', detail_pesanan: '[]', subtotal: 27000, service_fee: 0, total_bayar: 27000, status_pembayaran: 'belum' },
-        { order_id: 'ORD100004', timestamp: daysAgoISO(3, 15), nama_pelanggan: 'Budi Santoso', no_meja: '5', detail_pesanan: '[]', subtotal: 62000, service_fee: 0, total_bayar: 62000, status_pembayaran: 'lunas' },
-        { order_id: 'ORD100005', timestamp: daysAgoISO(8, 10), nama_pelanggan: 'Dewi Lestari', no_meja: '2', detail_pesanan: '[]', subtotal: 41000, service_fee: 0, total_bayar: 41000, status_pembayaran: 'belum' },
-        { order_id: 'ORD100006', timestamp: daysAgoISO(20, 14), nama_pelanggan: 'Rudi Hartono', no_meja: '9', detail_pesanan: '[]', subtotal: 55000, service_fee: 0, total_bayar: 55000, status_pembayaran: 'lunas' },
+        { order_id: 'ORD100001', timestamp: daysAgoISO(0, 9), nama_pelanggan: 'Budi Santoso', no_meja: '3', detail_pesanan: '[{"id":"M001","nama":"Kopi Susu Aren","harga":18000,"qty":2,"catatan":"","foto_url":""},{"id":"M009","nama":"Pisang Goreng","harga":10000,"qty":1,"catatan":"","foto_url":""}]', subtotal: 46000, service_fee: 0, total_bayar: 46000, status_pembayaran: 'belum', status_transaksi: 'pending' },
+        { order_id: 'ORD100002', timestamp: daysAgoISO(0, 12), nama_pelanggan: 'Siti Aminah', no_meja: '7', detail_pesanan: '[{"id":"M005","nama":"Teh Tarik","harga":12000,"qty":3,"catatan":"","foto_url":""}]', subtotal: 36000, service_fee: 0, total_bayar: 36000, status_pembayaran: 'lunas', status_transaksi: 'lanjut' },
+        { order_id: 'ORD100003', timestamp: daysAgoISO(1, 11), nama_pelanggan: 'Andi Wijaya', no_meja: '1', detail_pesanan: '[{"id":"M001","nama":"Kopi Susu Aren","harga":18000,"qty":1,"catatan":"tanpa gula","foto_url":""}]', subtotal: 18000, service_fee: 0, total_bayar: 18000, status_pembayaran: 'belum', status_transaksi: 'batal' },
+        { order_id: 'ORD100004', timestamp: daysAgoISO(3, 15), nama_pelanggan: 'Budi Santoso', no_meja: '5', detail_pesanan: '[{"id":"M002","nama":"Americano","harga":15000,"qty":2,"catatan":"","foto_url":""}]', subtotal: 30000, service_fee: 0, total_bayar: 30000, status_pembayaran: 'lunas', status_transaksi: 'lanjut' },
+        { order_id: 'ORD100005', timestamp: daysAgoISO(8, 10), nama_pelanggan: 'Dewi Lestari', no_meja: '2', detail_pesanan: '[{"id":"M010","nama":"Roti Bakar Coklat","harga":15000,"qty":1,"catatan":"","foto_url":""}]', subtotal: 15000, service_fee: 0, total_bayar: 15000, status_pembayaran: 'belum', status_transaksi: 'lanjut' },
+        { order_id: 'ORD100006', timestamp: daysAgoISO(20, 14), nama_pelanggan: 'Rudi Hartono', no_meja: '9', detail_pesanan: '[{"id":"M008","nama":"Matcha Latte","harga":20000,"qty":2,"catatan":"","foto_url":""}]', subtotal: 40000, service_fee: 0, total_bayar: 40000, status_pembayaran: 'lunas', status_transaksi: 'lanjut' },
       ];
     }
 
@@ -951,6 +1057,7 @@
           service_fee: payload.service_fee,
           total_bayar: payload.total_bayar,
           status_pembayaran: 'belum',
+          status_transaksi: 'pending',
         });
         lsSet(LS_ORDERS, list);
         return { success: true, order_id: orderId, message: 'Pesanan tersimpan' };
@@ -991,6 +1098,28 @@
       }
     }
 
+    async function apiSetOrderStatus(orderId, status) {
+      if (USE_MOCK) {
+        const list = lsGet(LS_ORDERS, seedOrders());
+        const o = list.find((x) => x.order_id === orderId);
+        if (o) o.status_transaksi = status;
+        lsSet(LS_ORDERS, list);
+        return { success: true, order_id: orderId, status, data: list };
+      }
+      try {
+        const res = await fetch(GAS_URL, {
+          method: 'POST',
+          redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'set_order_status', order_id: orderId, status, admin_key: ADMIN_PASSWORD }),
+        });
+        return await res.json();
+      } catch (e) {
+        console.error(e);
+        return { success: false, message: 'Gagal memperbarui status transaksi' };
+      }
+    }
+
     // ===== Vue App =====
     const { createApp } = Vue;
 
@@ -1020,6 +1149,14 @@
           orders: [],
           notifOn: true,
           lastNotifiedOrderId: '',
+          expandedOrderId: '',
+          actionBusy: false,
+          actionError: '',
+          histPeriod: 'today',
+          histPeriods: [
+            { key: 'today', label: 'Harian' },
+            { key: 'month', label: 'Bulanan' },
+          ],
           txSearch: '',
           txPeriod: 'all',
           txStatus: 'all',
@@ -1029,9 +1166,10 @@
             { key: 'month', label: 'Bulan Ini' },
           ],
           txStatuses: [
-            { key: 'all', label: 'Semua Status' },
-            { key: 'belum', label: 'Belum Lunas' },
-            { key: 'lunas', label: 'Lunas' },
+            { key: 'all', label: 'Semua' },
+            { key: 'pending', label: 'Pending' },
+            { key: 'lanjut', label: 'Lanjut' },
+            { key: 'batal', label: 'Batal' },
           ],
           menuFormOpen: false,
           menuFormError: '',
@@ -1114,15 +1252,58 @@
             });
           }
           if (this.txStatus !== 'all') {
-            list = list.filter((o) => o.status_pembayaran === this.txStatus);
+            list = list.filter((o) => (o.status_transaksi || 'pending') === this.txStatus);
           }
           list.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
           return list;
         },
+        totalPemasukan() {
+          return this.filteredOrders
+            .filter((o) => o.status_transaksi === 'lanjut')
+            .reduce((s, o) => s + Number(o.total_bayar || 0), 0);
+        },
         totalUtang() {
           return this.filteredOrders
-            .filter((o) => o.status_pembayaran !== 'lunas')
+            .filter((o) => o.status_transaksi === 'lanjut' && o.status_pembayaran !== 'lunas')
             .reduce((s, o) => s + Number(o.total_bayar || 0), 0);
+        },
+        historyItems() {
+          const now = new Date();
+          const inPeriod = (iso) => {
+            const d = new Date(iso);
+            if (this.histPeriod === 'today') {
+              return (
+                d.getFullYear() === now.getFullYear() &&
+                d.getMonth() === now.getMonth() &&
+                d.getDate() === now.getDate()
+              );
+            }
+            return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+          };
+          const map = {};
+          for (const o of this.orders) {
+            if (o.status_transaksi !== 'lanjut') continue;
+            if (!inPeriod(o.timestamp)) continue;
+            let lines = [];
+            try {
+              lines = JSON.parse(o.detail_pesanan || '[]');
+            } catch (_) {
+              lines = [];
+            }
+            for (const l of lines) {
+              const id = String(l.id || l.nama || 'x');
+              if (!map[id]) map[id] = { id, nama: l.nama || id, qty: 0, omzet: 0 };
+              map[id].qty += Number(l.qty) || 0;
+              map[id].omzet += (Number(l.harga) || 0) * (Number(l.qty) || 0);
+            }
+          }
+          return Object.values(map).sort((a, b) => b.qty - a.qty || b.omzet - a.omzet);
+        },
+        historyTotalQty() {
+          return this.historyItems.reduce((s, h) => s + h.qty, 0);
+        },
+        historyTotalOmzet() {
+          return this.historyItems.reduce((s, h) => s + h.omzet, 0);
         },
       },
       watch: {
@@ -1349,6 +1530,44 @@
             if (o) o.status_pembayaran = next;
             else order.status_pembayaran = next;
           }
+        },
+        toggleExpand(orderId) {
+          this.actionError = '';
+          this.expandedOrderId = this.expandedOrderId === orderId ? '' : orderId;
+        },
+        orderLines(o) {
+          try {
+            const lines = JSON.parse(o.detail_pesanan || '[]');
+            return Array.isArray(lines) ? lines : [];
+          } catch (_) {
+            return [];
+          }
+        },
+        txLabel(s) {
+          if (s === 'lanjut') return 'Lanjut';
+          if (s === 'batal') return 'Batal';
+          return 'Pending';
+        },
+        txBadgeClass(s) {
+          if (s === 'lanjut') return 'bg-primary text-white';
+          if (s === 'batal') return 'bg-surfacedark text-white';
+          return 'bg-accentstar/20 text-textprimary';
+        },
+        async setOrderStatus(order, status) {
+          if (this.actionBusy) return;
+          if (status === 'batal' && !confirm('Batalkan order #' + order.order_id + '?')) return;
+          this.actionBusy = true;
+          this.actionError = '';
+          const res = await apiSetOrderStatus(order.order_id, status);
+          this.actionBusy = false;
+          if (!res || res.success !== true) {
+            this.actionError = (res && res.message) || 'Gagal memperbarui status.';
+            return;
+          }
+          this.orders = Array.isArray(res.data) ? res.data : this.orders;
+          const o = this.orders.find((x) => x.order_id === order.order_id);
+          if (o) o.status_transaksi = status;
+          else order.status_transaksi = status;
         },
         openAdd(item) {
           this.addTarget = item;

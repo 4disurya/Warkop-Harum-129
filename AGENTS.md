@@ -24,6 +24,7 @@ Aplikasi pemesanan menu digital: katalog → keranjang → checkout ke Google Ap
 - Jalankan FE statis, atau `firebase serve` **setelah** `firebase init hosting` (dir `public/`) — `firebase.json` belum ada.
 - `clasp login` sekali; **jalankan clasp dari folder `backend/`** (`.clasp.json` ada di sana, `rootDir` kosong).
 - Update BE: edit lokal → `clasp push` → `clasp deploy --deploymentId {DEV} --description "Dev Update"` → uji Dev → ulangi dengan `{PROD}`.
+- Update FE: edit `public/index.html` → commit/push GitHub → `firebase deploy --only hosting --project warkop-harum-129`.
 - Setup otomatis sekali: jalankan `setup()` di `Code.gs` (via `clasp run` / editor GAS) — membuat folder Drive **`Warkop Harum 129`**, spreadsheet DB `Warkop Harum 129 — DB` di dalamnya (ID → Script Properties `SPREADSHEET_ID`), semua sheet, dan seed menu. Tanpa `setup()`, `getSpreadsheet_()` tetap auto-create folder + sheet pada request pertama.
 
 ## 1. Tech Stack
@@ -46,7 +47,8 @@ Aplikasi pemesanan menu digital: katalog → keranjang → checkout ke Google Ap
 - Semua tulis Sheet wajib lewat `withLock_()` / `LockService` (NFR `prd.md`).
 - API surface:
   - GET `?action=` → `menus` | `orders` | `stats` | `health`
-  - POST body `{action: ...}` → `submit_order` | `menu_save` | `menu_delete` | `set_payment`
+  - POST body `{action: ...}` → `submit_order` | `menu_save` | `menu_delete` | `set_payment` | `set_order_status`
+  - `status_transaksi` (`pending` | `lanjut` | `batal`): hanya **`lanjut`** yang dihitung pemasukan/omzet; kolom lama default `pending` (`ensureOrderSheet_`).
 - Auth: mutasi admin wajib `admin_key === 'harum129'` (`CONFIG.ADMIN_PASSWORD`; dipantul juga di FE `ADMIN_PASSWORD`). `submit_order` tidak butuh admin, tapi di-rate-limit 5 order / 10 menit per `client_id`.
 - **Gotcha nama sheet:** order disimpan di sheet **`sales`** (bukan `orders`); sheet lain: `menus`, `stats`. Sheet dibuat otomatis via `PropertiesService` `SPREADSHEET_ID`.
 - Foto `data:image` → otomatis diupload ke Drive, kembalikan URL publik (limit sel 50k char) — `saveDataUrlToDrive_`.

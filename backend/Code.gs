@@ -9,7 +9,8 @@
  * Sheets:
  *  - menus : id, nama, kategori, harga, foto_url, status_stok, rating
  *  - sales : timestamp, order_id, nama_pelanggan, no_meja, detail_pesanan,
- *            subtotal, service_fee, total_bayar, status_pembayaran
+ *            subtotal, service_fee, total_bayar, status_pembayaran, status_transaksi
+ *            (status_transaksi: pending | lanjut | batal)
  *  - stats : id, nama, terjual
  */
 
@@ -36,7 +37,9 @@ var ORDER_HEADERS = [
   'service_fee',
   'total_bayar',
   'status_pembayaran',
+  'status_transaksi',
 ];
+var TX_STATUSES = ['pending', 'lanjut', 'batal'];
 
 var DEFAULT_MENUS = [
   { id: 'M001', nama: 'Kopi Susu Aren', kategori: 'Kopi', harga: 18000, foto_url: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=400&h=400&fit=crop', status_stok: 'tersedia', rating: 4.9 },
@@ -78,6 +81,7 @@ function doPost(e) {
     if (action === 'menu_save') return jsonOut_(saveMenu_(body));
     if (action === 'menu_delete') return jsonOut_(deleteMenu_(body));
     if (action === 'set_payment') return jsonOut_(setPayment_(body));
+    if (action === 'set_order_status') return jsonOut_(setOrderStatus_(body));
     return jsonOut_({ success: false, message: 'Unknown action: ' + action });
   } catch (err) {
     return jsonOut_({ success: false, message: String(err && err.message ? err.message : err) });
@@ -118,11 +122,12 @@ function submitOrder_(body) {
     service_fee: Math.round(serviceFee),
     total_bayar: Math.round(total),
     status_pembayaran: 'belum',
+    status_transaksi: 'pending',
   };
 
   withLock_(function () {
     var ss = getSpreadsheet_();
-    var sh = ensureSheet_(ss, CONFIG.SHEET_ORDERS, ORDER_HEADERS);
+    var sh = ensureOrderSheet_(ss);
     var values = ORDER_HEADERS.map(function (h) { return row[h] === undefined ? '' : row[h]; });
     sh.appendRow(values);
     updateSoldStats_(ss, body.items || []);
@@ -206,7 +211,7 @@ function setPayment_(body) {
 
   withLock_(function () {
     var ss = getSpreadsheet_();
-    var sh = ensureSheet_(ss, CONFIG.SHEET_ORDERS, ORDER_HEADERS);
+    var sh = ensureOrderSheet_(ss);
     var statusCol = ORDER_HEADERS.indexOf('status_pembayaran') + 1;
     var idCol = ORDER_HEADERS.indexOf('order_id') + 1;
     var data = sh.getDataRange().getValues();
@@ -219,6 +224,36 @@ function setPayment_(body) {
   });
 
   return { success: true, data: getOrders_() };
+}
+
+/** Aksi admin: pending → lanjut (pemasukan) / batal. Append-only, tidak ubah set_payment. */
+function setOrderStatus_(body) {
+  if (!isAdmin_(body)) return { success: false, message: 'Unauthorized' };
+  var orderId = String(body.order_id || '');
+  var status = String(body.status || '');
+  if (!orderId) return { success: false, message: 'order_id kosong.' };
+  if (TX_STATUSES.indexOf(status) === -1) {
+    return { success: false, message: 'Status tidak valid. Pakai: pending | lanjut | batal' };
+  }
+
+  withLock_(function () {
+    var ss = getSpreadsheet_();
+    var sh = ensureOrderSheet_(ss);
+    var statusCol = ORDER_HEADERS.indexOf('status_transaksi') + 1;
+    var idCol = ORDER_HEADERS.indexOf('order_id') + 1;
+    var data = sh.getDataRange().getValues();
+    var found = false;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][idCol - 1]) === orderId) {
+        sh.getRange(i + 1, statusCol).setValue(status);
+        found = true;
+        break;
+      }
+    }
+    if (!found) throw new Error('Order tidak ditemukan: ' + orderId);
+  });
+
+  return { success: true, order_id: orderId, status: status, data: getOrders_() };
 }
 
 // ===== Readers =====
@@ -265,11 +300,13 @@ function getMenus_() {
 
 function getOrders_() {
   var ss = getSpreadsheet_();
-  var sh = ensureSheet_(ss, CONFIG.SHEET_ORDERS, ORDER_HEADERS);
+  var sh = ensureOrderSheet_(ss);
   var data = sh.getDataRange().getValues();
   var out = [];
   for (var i = 1; i < data.length; i++) {
     if (!data[i][1]) continue;
+    var tx = String(data[i][9] || '').toLowerCase();
+    if (TX_STATUSES.indexOf(tx) === -1) tx = 'pending'; // baris lama / kosong
     out.push({
       timestamp: toIso_(data[i][0]),
       order_id: String(data[i][1]),
@@ -280,6 +317,7 @@ function getOrders_() {
       service_fee: Number(data[i][6]) || 0,
       total_bayar: Number(data[i][7]) || 0,
       status_pembayaran: String(data[i][8] || 'belum'),
+      status_transaksi: tx,
     });
   }
   out.sort(function (a, b) {
@@ -307,11 +345,16 @@ function getStats_() {
   var orders = getOrders_();
   var totalUtang = 0;
   var omzet = 0;
+  var jumlahOrder = 0;
   for (var j = 0; j < orders.length; j++) {
-    omzet += orders[j].total_bayar;
-    if (orders[j].status_pembayaran !== 'lunas') totalUtang += orders[j].total_bayar;
+    var o = orders[j];
+    // pemasukan = hanya order yang dilanjutkan admin
+    if (o.status_transaksi !== 'lanjut') continue;
+    jumlahOrder++;
+    omzet += o.total_bayar;
+    if (o.status_pembayaran !== 'lunas') totalUtang += o.total_bayar;
   }
-  return { best_sellers: items, omzet: omzet, total_utang: totalUtang, jumlah_order: orders.length };
+  return { best_sellers: items, omzet: omzet, total_utang: totalUtang, jumlah_order: jumlahOrder };
 }
 
 // ===== Sheets / infra =====
@@ -385,6 +428,24 @@ function ensureSheet_(ss, name, headers) {
   if (empty) {
     sh.getRange(1, 1, 1, headers.length).setValues([headers]);
     sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+/** Sheet sales + migrasi kolom `status_transaksi` bila belum ada (baris lama → pending). */
+function ensureOrderSheet_(ss) {
+  var sh = ensureSheet_(ss, CONFIG.SHEET_ORDERS, ORDER_HEADERS);
+  var col = ORDER_HEADERS.indexOf('status_transaksi') + 1;
+  var headerCell = sh.getRange(1, col).getValue();
+  if (String(headerCell) !== 'status_transaksi') {
+    sh.getRange(1, col).setValue('status_transaksi');
+    var lastRow = sh.getLastRow();
+    if (lastRow > 1) {
+      var vals = sh.getRange(2, col, lastRow - 1, 1).getValues();
+      for (var k = 0; k < vals.length; k++) {
+        if (vals[k][0] === '' || vals[k][0] === null) sh.getRange(2 + k, col).setValue('pending');
+      }
+    }
   }
   return sh;
 }
@@ -502,7 +563,7 @@ function setup() {
   moveToAppFolder_(DriveApp.getFileById(ss.getId()));
 
   ensureSheet_(ss, CONFIG.SHEET_MENUS, MENU_HEADERS);
-  ensureSheet_(ss, CONFIG.SHEET_ORDERS, ORDER_HEADERS);
+  ensureOrderSheet_(ss);
   ensureSheet_(ss, CONFIG.SHEET_STATS, ['id', 'nama', 'terjual']);
   getMenus_(); // seed / perbaiki DEFAULT_MENUS
 
