@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#D35400" />
+  <title>Warkop Harum 129</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#D35400',
+            bgmain: '#EBEBEB',
+            surfacedark: '#1A1A1A',
+            surfacewhite: '#FFFFFF',
+            textprimary: '#000000',
+            textsecondary: '#8E8E8E',
+            textondark: '#FFFFFF',
+            accentstar: '#F1C40F',
+          },
+          fontFamily: {
+            sans: ['Poppins', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          },
+          borderRadius: {
+            card: '24px',
+            input: '12px',
+            pill: '50px',
+            panel: '40px',
+          },
+          boxShadow: {
+            soft: '0px 10px 20px rgba(0,0,0,0.05)',
+            glow: '0px 15px 30px rgba(0,0,0,0.2)',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    html, body { margin: 0; padding: 0; background: #EBEBEB; }
+    body { font-family: 'Poppins', sans-serif; min-width: 320px; }
+    * { -webkit-tap-highlight-color: transparent; }
+    .btn-press { transition: transform 0.08s ease, opacity 0.08s ease; }
+    .btn-press:active { transform: scale(0.96); opacity: 0.9; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .skeleton {
+      background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.2s infinite;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .fade-in { animation: fadeIn 0.25s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    input, select, textarea { font-size: 16px; }
+    button, a { min-height: 44px; }
+    .tap-44 { min-width: 44px; min-height: 44px; }
+  </style>
+</head>
+<body>
+  <div id="app" v-cloak>
+    <div class="mx-auto min-h-screen max-w-md bg-bgmain relative pb-32">
+      <!-- Top Nav -->
+      <header class="sticky top-0 z-40 bg-bgmain px-5 pt-4 pb-2">
+        <div class="relative flex h-12 items-center justify-center">
+          <button
+            type="button"
+            class="tap-44 absolute left-0 flex items-center justify-center text-textprimary"
+            aria-label="Menu"
+            @click="menuOpen = !menuOpen"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+          </button>
+          <img src="logo.jpg" alt="Warkop Harum 129" class="h-12 w-12 rounded-[10px] object-cover shadow-glow" />
+          <button
+            type="button"
+            class="tap-44 absolute right-0 flex items-center justify-center"
+            aria-label="Keranjang"
+            @click="go('#/keranjang')"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 6h15l-1.5 9h-12z" />
+              <path d="M6 6L5 3H2" />
+              <circle cx="9" cy="20" r="1.5" fill="#000" />
+              <circle cx="18" cy="20" r="1.5" fill="#000" />
+            </svg>
+            <span
+              v-if="cartCount > 0"
+              class="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold text-white"
+            >{{ cartCount }}</span>
+          </button>
+        </div>
+
+        <div v-if="menuOpen" class="mt-2 rounded-input bg-white p-4 shadow-soft fade-in">
+          <p class="text-sm font-bold text-textprimary">Warkop Harum 129</p>
+          <p class="mt-1 text-xs text-textsecondary">Pesan menu favoritmu, tanpa antre.</p>
+
+          <div class="mt-3 border-t border-bgmain pt-3">
+            <template v-if="!isAdmin">
+              <p class="text-xs font-bold uppercase tracking-wide text-textsecondary">Login Admin</p>
+              <form class="mt-2 flex gap-2" @submit.prevent="adminLogin">
+                <input
+                  v-model="adminPassword"
+                  type="password"
+                  placeholder="Password admin"
+                  class="min-w-0 flex-1 rounded-input border border-bgmain bg-bgmain px-3 py-2.5 text-sm text-textprimary outline-none focus:border-primary"
+                  autocomplete="current-password"
+                  aria-label="Password admin"
+                />
+                <button
+                  type="submit"
+                  class="btn-press shrink-0 rounded-pill bg-primary px-4 text-sm font-bold text-white"
+                >Masuk</button>
+              </form>
+              <p v-if="loginError" class="mt-2 text-xs font-semibold text-primary">{{ loginError }}</p>
+            </template>
+            <template v-else>
+              <div class="flex items-center justify-between gap-2">
+                <span class="rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-white">Admin</span>
+                <button
+                  type="button"
+                  class="btn-press text-xs font-semibold text-textsecondary underline"
+                  @click="adminLogout"
+                >Logout</button>
+              </div>
+              <button
+                type="button"
+                class="btn-press mt-3 w-full rounded-pill bg-surfacedark py-3 text-sm font-bold text-white"
+                @click="go('#/admin')"
+              >Dashboard Admin</button>
+            </template>
+          </div>
+        </div>
+
+        <!-- Search -->
+        <div v-if="route === 'catalog'" class="mt-3">
+          <div class="flex items-center gap-2 rounded-input bg-white px-4 py-3 shadow-soft">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E8E8E" stroke-width="2">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M20 20l-3-3" stroke-linecap="round" />
+            </svg>
+            <input
+              v-model="search"
+              type="search"
+              placeholder="Cari menu..."
+              class="w-full bg-transparent text-[15px] text-textprimary outline-none placeholder:text-textsecondary"
+              aria-label="Cari menu"
+            />
+          </div>
+        </div>
+      </header>
+
+      <!-- ========== CATALOG ========== -->
+      <main v-if="route === 'catalog'" class="px-5 fade-in">
+        <!-- Skeleton -->
+        <div v-if="loading" class="space-y-4">
+          <div class="flex gap-3">
+            <div class="skeleton h-4 w-20 rounded"></div>
+            <div class="skeleton h-4 w-16 rounded"></div>
+            <div class="skeleton h-4 w-16 rounded"></div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div v-for="i in 4" :key="i" class="skeleton h-56 rounded-card"></div>
+          </div>
+        </div>
+
+        <template v-else>
+          <!-- Category tabs -->
+          <nav class="no-scrollbar -mx-5 flex gap-6 overflow-x-auto px-5 py-2" aria-label="Kategori">
+            <button
+              v-for="cat in categories"
+              :key="cat"
+              type="button"
+              class="btn-press relative shrink-0 pb-2 text-sm font-semibold"
+              :class="activeCategory === cat ? 'text-textprimary' : 'text-textsecondary'"
+              @click="activeCategory = cat"
+            >
+              {{ cat }}
+              <span
+                v-if="activeCategory === cat"
+                class="absolute bottom-0 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-primary"
+              ></span>
+            </button>
+          </nav>
+
+          <!-- Product grid -->
+          <section class="mt-4 grid grid-cols-2 gap-4">
+            <article
+              v-for="item in filteredMenus"
+              :key="item.id"
+              class="relative rounded-card bg-surfacedark pb-4 shadow-glow"
+            >
+              <div class="mx-auto -mt-8 h-28 w-28 overflow-hidden rounded-full border-4 border-surfacedark bg-white">
+                <img
+                  :src="item.foto_url"
+                  :alt="item.nama"
+                  class="h-full w-full object-cover"
+                  loading="lazy"
+                  @error="$event.target.src = fallbackImg"
+                />
+              </div>
+              <div class="px-3 pt-3">
+                <h3 class="text-sm font-bold leading-snug text-textondark">{{ item.nama }}</h3>
+                <div class="mt-1 flex items-center gap-1">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="#F1C40F">
+                    <path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.5l7.1-.6z" />
+                  </svg>
+                  <span class="text-xs font-semibold text-accentstar">{{ item.rating }}</span>
+                </div>
+                <div class="mt-2 flex items-center justify-between gap-2">
+                  <p class="text-base font-bold text-textondark">{{ rupiah(item.harga) }}</p>
+                  <button
+                    type="button"
+                    class="tap-44 btn-press flex h-9 w-9 items-center justify-center rounded-full bg-primary text-xl font-bold leading-none text-white disabled:opacity-40"
+                    :disabled="item.status_stok !== 'tersedia'"
+                    :aria-label="'Tambah ' + item.nama"
+                    @click="openAdd(item)"
+                  >
+                    <span class="-mt-0.5">+</span>
+                  </button>
+                </div>
+                <p v-if="item.status_stok !== 'tersedia'" class="mt-1 text-[11px] text-accentstar">Habis</p>
+              </div>
+            </article>
+          </section>
+
+          <p v-if="filteredMenus.length === 0" class="mt-8 text-center text-sm text-textsecondary">
+            Menu tidak ditemukan.
+          </p>
+
+          <!-- Category icons -->
+          <section class="mt-8">
+            <h2 class="mb-3 text-lg font-bold text-textprimary">Kategori</h2>
+            <div class="no-scrollbar -mx-5 flex gap-3 overflow-x-auto px-5">
+              <button
+                v-for="cat in categoriesIcon"
+                :key="cat.name"
+                type="button"
+                class="btn-press flex w-20 shrink-0 flex-col items-center gap-2"
+                @click="activeCategory = cat.filter; go('#/')"
+              >
+                <span class="flex h-16 w-20 items-center justify-center rounded-[16px] bg-surfacedark text-2xl shadow-soft">
+                  {{ cat.icon }}
+                </span>
+                <span class="text-xs font-semibold text-textprimary">{{ cat.name }}</span>
+              </button>
+            </div>
+          </section>
+        </template>
+      </main>
+
+      <!-- ========== CART ========== -->
+      <main v-else-if="route === 'cart'" class="px-5 fade-in">
+        <button type="button" class="btn-press mb-3 flex items-center gap-2 text-sm font-semibold text-textprimary" @click="go('#/')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M15 6l-6 6 6 6" />
+          </svg>
+          Kembali ke menu
+        </button>
+
+        <div class="rounded-panel bg-white p-5 shadow-soft">
+          <h1 class="text-[22px] font-bold text-textprimary">Keranjang</h1>
+
+          <p v-if="cart.length === 0" class="mt-4 text-sm text-textsecondary">
+            Keranjang masih kosong.
+            <button type="button" class="font-semibold text-primary underline" @click="go('#/')">Pilih menu</button>
+          </p>
+
+          <ul v-else class="mt-4 space-y-4">
+            <li v-for="line in cart" :key="line.key" class="flex items-center gap-3">
+              <img
+                :src="line.foto_url"
+                :alt="line.nama"
+                class="h-12 w-12 shrink-0 rounded-full object-cover"
+                @error="$event.target.src = fallbackImg"
+              />
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-bold text-textprimary">{{ line.nama }}</p>
+                <p v-if="line.catatan" class="truncate text-xs text-textsecondary">“{{ line.catatan }}”</p>
+                <p class="mt-0.5 text-sm font-semibold text-primary">{{ rupiah(line.harga * line.qty) }}</p>
+              </div>
+              <div class="flex items-center gap-1 rounded-input border border-bgmain">
+                <button type="button" class="tap-44 btn-press flex h-9 w-9 items-center justify-center text-lg font-bold text-textprimary" aria-label="Kurangi" @click="changeQty(line.key, -1)">−</button>
+                <span class="w-6 text-center text-sm font-bold">{{ line.qty }}</span>
+                <button type="button" class="tap-44 btn-press flex h-9 w-9 items-center justify-center text-lg font-bold text-textprimary" aria-label="Tambah" @click="changeQty(line.key, 1)">+</button>
+              </div>
+            </li>
+          </ul>
+
+          <template v-if="cart.length > 0">
+            <div class="mt-6 border-t border-bgmain pt-4">
+              <label class="mb-1 block text-sm font-bold text-textprimary" for="nama">Nama <span class="text-primary">*</span></label>
+              <input
+                id="nama"
+                v-model="form.nama"
+                type="text"
+                maxlength="50"
+                placeholder="Nama kamu (min. 3 huruf)"
+                class="w-full rounded-input border border-bgmain bg-bgmain px-4 py-3 text-textprimary outline-none focus:border-primary"
+                autocomplete="name"
+              />
+              <p v-if="errors.nama" class="mt-1 text-xs font-semibold text-primary">{{ errors.nama }}</p>
+            </div>
+
+            <div class="mt-4">
+              <label class="mb-1 block text-sm font-bold text-textprimary" for="meja">Nomor Meja <span class="text-primary">*</span></label>
+              <select
+                id="meja"
+                v-model="form.noMeja"
+                class="w-full rounded-input border border-bgmain bg-bgmain px-4 py-3 text-textprimary outline-none focus:border-primary"
+              >
+                <option value="" disabled>Pilih nomor meja</option>
+                <option v-for="n in 20" :key="n" :value="String(n)">Meja {{ n }}</option>
+              </select>
+              <p v-if="errors.noMeja" class="mt-1 text-xs font-semibold text-primary">{{ errors.noMeja }}</p>
+            </div>
+
+            <div class="mt-6 space-y-2 border-t border-bgmain pt-4 text-sm">
+              <div class="flex justify-between text-textsecondary">
+                <span>Subtotal</span>
+                <span class="font-semibold text-textprimary">{{ rupiah(subtotal) }}</span>
+              </div>
+              <div class="flex justify-between text-textsecondary">
+                <span>Biaya layanan</span>
+                <span class="font-semibold text-textprimary">{{ rupiah(serviceFee) }}</span>
+              </div>
+              <div class="flex justify-between pt-1 text-base font-bold text-textprimary">
+                <span>Total</span>
+                <span>{{ rupiah(total) }}</span>
+              </div>
+            </div>
+
+            <p v-if="submitError" class="mt-4 rounded-input bg-primary/10 px-3 py-2 text-xs font-semibold text-primary">
+              {{ submitError }}
+            </p>
+
+            <button
+              type="button"
+              class="btn-press mt-6 w-full rounded-pill bg-primary py-4 text-base font-bold text-white shadow-glow disabled:opacity-50"
+              :disabled="submitting"
+              @click="submitOrder"
+            >
+              {{ submitting ? 'Mengirim...' : 'Kirim Pesanan' }}
+            </button>
+          </template>
+        </div>
+      </main>
+
+      <!-- ========== SUCCESS ========== -->
+      <main v-else-if="route === 'success'" class="px-5 fade-in">
+        <div class="rounded-panel bg-white p-5 shadow-soft">
+          <div class="flex flex-col items-center pt-4 text-center">
+            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-primary">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h1 class="mt-4 text-[22px] font-bold text-textprimary">Pesanan diterima!</h1>
+            <p class="mt-1 text-sm text-textsecondary">
+              Order <span class="font-bold text-textprimary">#{{ lastOrder.order_id || '-' }}</span>
+              · {{ lastOrder.nama_pelanggan || '' }} · Meja {{ lastOrder.no_meja || '' }}
+            </p>
+          </div>
+
+          <ul class="mt-6 space-y-4">
+            <li v-for="(line, idx) in lastOrderLines" :key="idx" class="flex items-center gap-3">
+              <img :src="line.foto_url" :alt="line.nama" class="h-11 w-11 rounded-full object-cover" @error="$event.target.src = fallbackImg" />
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-bold text-textprimary">{{ line.nama }}</p>
+                <p v-if="line.catatan" class="truncate text-xs text-textsecondary">“{{ line.catatan }}”</p>
+              </div>
+              <span class="rounded-md border border-bgmain px-2 py-1 text-xs font-bold text-textprimary">{{ line.qty }}</span>
+              <span class="w-20 text-right text-sm font-semibold text-primary">{{ rupiah(line.harga * line.qty) }}</span>
+            </li>
+          </ul>
+
+          <div class="mt-6 space-y-2 border-t border-bgmain pt-4 text-sm">
+            <div class="flex justify-between text-textsecondary">
+              <span>Subtotal</span>
+              <span class="font-semibold text-textprimary">{{ rupiah(lastOrder.subtotal || 0) }}</span>
+            </div>
+            <div class="flex justify-between text-textsecondary">
+              <span>Biaya layanan</span>
+              <span class="font-semibold text-textprimary">{{ rupiah(lastOrder.service_fee || 0) }}</span>
+            </div>
+            <div class="flex justify-between text-base font-bold text-textprimary">
+              <span>Total</span>
+              <span>{{ rupiah(lastOrder.total_bayar || 0) }}</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="btn-press mt-6 w-full rounded-pill bg-primary py-4 text-base font-bold text-white shadow-glow"
+            @click="go('#/')"
+          >
+            Pesan Lagi
+          </button>
+        </div>
+      </main>
+
+      <!-- ========== ADMIN ========== -->
+      <main v-else-if="route === 'admin'" class="px-5 fade-in">
+        <div class="rounded-panel bg-white p-5 shadow-soft">
+          <div class="flex items-center justify-between gap-2">
+            <h1 class="text-[22px] font-bold text-textprimary">Dashboard Admin</h1>
+            <span class="rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-white">Admin</span>
+          </div>
+
+          <nav class="mt-4 flex gap-2" aria-label="Tab admin">
+            <button
+              type="button"
+              class="btn-press flex-1 rounded-pill py-2.5 text-sm font-bold"
+              :class="adminTab === 'menu' ? 'bg-primary text-white' : 'bg-bgmain text-textsecondary'"
+              @click="adminTab = 'menu'"
+            >Menu</button>
+            <button
+              type="button"
+              class="btn-press flex-1 rounded-pill py-2.5 text-sm font-bold"
+              :class="adminTab === 'transaksi' ? 'bg-primary text-white' : 'bg-bgmain text-textsecondary'"
+              @click="adminTab = 'transaksi'"
+            >Transaksi</button>
+          </nav>
+
+          <!-- Tab: Menu -->
+          <section v-if="adminTab === 'menu'" class="mt-5">
+            <button
+              type="button"
+              class="btn-press w-full rounded-pill bg-surfacedark py-3 text-sm font-bold text-white"
+              @click="openMenuForm()"
+            >+ Tambah Item</button>
+
+            <ul class="mt-4 space-y-3">
+              <li v-for="item in menus" :key="item.id" class="flex items-center gap-3 rounded-input bg-bgmain p-3">
+                <img
+                  :src="item.foto_url"
+                  :alt="item.nama"
+                  class="h-12 w-12 shrink-0 rounded-full object-cover"
+                  @error="$event.target.src = fallbackImg"
+                />
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-bold text-textprimary">{{ item.nama }}</p>
+                  <p class="text-xs text-textsecondary">
+                    {{ item.kategori }} · {{ rupiah(item.harga) }} ·
+                    <span :class="item.status_stok === 'tersedia' ? 'text-primary' : 'text-textsecondary'">{{ item.status_stok }}</span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="tap-44 btn-press flex h-9 w-9 items-center justify-center rounded-full bg-white text-sm font-bold text-textprimary shadow-soft"
+                  aria-label="Edit"
+                  @click="openMenuForm(item)"
+                >✎</button>
+                <button
+                  type="button"
+                  class="tap-44 btn-press flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-white"
+                  aria-label="Hapus"
+                  @click="deleteMenuItem(item)"
+                >×</button>
+              </li>
+            </ul>
+          </section>
+
+          <!-- Tab: Transaksi -->
+          <section v-else class="mt-5">
+            <div class="grid grid-cols-2 gap-3">
+              <div class="rounded-input bg-bgmain p-3">
+                <p class="text-xs text-textsecondary">Total transaksi</p>
+                <p class="mt-0.5 text-sm font-bold text-textprimary">{{ filteredOrders.length }} order</p>
+              </div>
+              <div class="rounded-input bg-primary/10 p-3">
+                <p class="text-xs text-primary">Total utang (belum lunas)</p>
+                <p class="mt-0.5 text-sm font-bold text-primary">{{ rupiah(totalUtang) }}</p>
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <input
+                v-model="txSearch"
+                type="search"
+                placeholder="Filter nama..."
+                class="w-full rounded-input border border-bgmain bg-bgmain px-4 py-3 text-sm text-textprimary outline-none focus:border-primary"
+                aria-label="Filter nama"
+              />
+            </div>
+
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button
+                v-for="p in txPeriods"
+                :key="p.key"
+                type="button"
+                class="btn-press rounded-pill px-3 py-2 text-xs font-bold"
+                :class="txPeriod === p.key ? 'bg-primary text-white' : 'bg-bgmain text-textsecondary'"
+                @click="txPeriod = p.key"
+              >{{ p.label }}</button>
+            </div>
+            <div class="mt-2 flex flex-wrap gap-2">
+              <button
+                v-for="s in txStatuses"
+                :key="s.key"
+                type="button"
+                class="btn-press rounded-pill px-3 py-2 text-xs font-bold"
+                :class="txStatus === s.key ? 'bg-surfacedark text-white' : 'bg-bgmain text-textsecondary'"
+                @click="txStatus = s.key"
+              >{{ s.label }}</button>
+            </div>
+
+            <p v-if="filteredOrders.length === 0" class="mt-6 text-center text-sm text-textsecondary">
+              Tidak ada transaksi.
+            </p>
+
+            <ul v-else class="mt-4 space-y-3">
+              <li v-for="o in filteredOrders" :key="o.order_id" class="rounded-input border border-bgmain p-3">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="text-sm font-bold text-textprimary">
+                      #{{ o.order_id }}
+                      <span
+                        class="ml-1 rounded-full px-2 py-0.5 text-[10px] font-bold"
+                        :class="o.status_pembayaran === 'lunas' ? 'bg-primary text-white' : 'bg-bgmain text-textsecondary'"
+                      >{{ o.status_pembayaran === 'lunas' ? 'Lunas' : 'Belum' }}</span>
+                    </p>
+                    <p class="truncate text-xs text-textsecondary">
+                      {{ o.nama_pelanggan }} · Meja {{ o.no_meja }} · {{ formatDate(o.timestamp) }}
+                    </p>
+                  </div>
+                  <p class="shrink-0 text-sm font-bold text-primary">{{ rupiah(o.total_bayar) }}</p>
+                </div>
+                <button
+                  type="button"
+                  class="btn-press mt-2 w-full rounded-pill py-2 text-xs font-bold"
+                  :class="o.status_pembayaran === 'lunas' ? 'bg-bgmain text-textprimary' : 'bg-primary text-white'"
+                  @click="togglePayment(o)"
+                >
+                  {{ o.status_pembayaran === 'lunas' ? 'Tandai Belum Lunas' : 'Tandai Lunas' }}
+                </button>
+              </li>
+            </ul>
+          </section>
+        </div>
+      </main>
+
+      <!-- Sticky bottom bar -->
+      <div
+        v-if="route === 'catalog' && cartCount > 0"
+        class="fixed bottom-0 left-1/2 z-40 w-full max-w-md -translate-x-1/2 px-5 pb-5"
+      >
+        <button
+          type="button"
+          class="btn-press flex w-full items-center justify-between rounded-pill bg-primary px-6 py-4 text-white shadow-glow"
+          @click="go('#/keranjang')"
+        >
+          <span class="flex items-center gap-2 text-sm font-bold">
+            <span class="rounded-full bg-white/25 px-2 py-0.5 text-xs">{{ cartCount }} item</span>
+            Lihat Keranjang
+          </span>
+          <span class="text-sm font-bold">{{ rupiah(total) }}</span>
+        </button>
+      </div>
+
+      <!-- Add-to-cart sheet -->
+      <div
+        v-if="addTarget"
+        class="fixed inset-0 z-50 flex items-end justify-center bg-black/50"
+        @click.self="addTarget = null"
+      >
+        <div class="w-full max-w-md rounded-t-panel bg-white p-5 pb-8 shadow-glow fade-in">
+          <div class="mx-auto mb-3 h-1 w-10 rounded-full bg-bgmain"></div>
+          <div class="flex items-center gap-3">
+            <img :src="addTarget.foto_url" :alt="addTarget.nama" class="h-14 w-14 rounded-full object-cover" @error="$event.target.src = fallbackImg" />
+            <div>
+              <h2 class="text-base font-bold text-textprimary">{{ addTarget.nama }}</h2>
+              <p class="text-sm font-semibold text-primary">{{ rupiah(addTarget.harga) }}</p>
+            </div>
+          </div>
+
+          <label class="mb-1 mt-4 block text-sm font-bold text-textprimary" for="catatan">Catatan (opsional)</label>
+          <textarea
+            id="catatan"
+            v-model="addNote"
+            rows="2"
+            maxlength="120"
+            placeholder="Contoh: tanpa gula, es sedikit..."
+            class="w-full resize-none rounded-input border border-bgmain bg-bgmain px-4 py-3 text-sm text-textprimary outline-none focus:border-primary"
+          ></textarea>
+
+          <div class="mt-4 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-1 rounded-input border border-bgmain">
+              <button type="button" class="tap-44 btn-press flex h-11 w-11 items-center justify-center text-xl font-bold" aria-label="Kurangi" @click="addQty = Math.max(1, addQty - 1)">−</button>
+              <span class="w-8 text-center font-bold">{{ addQty }}</span>
+              <button type="button" class="tap-44 btn-press flex h-11 w-11 items-center justify-center text-xl font-bold" aria-label="Tambah" @click="addQty++">+</button>
+            </div>
+            <button
+              type="button"
+              class="btn-press flex-1 rounded-pill bg-primary py-3.5 text-sm font-bold text-white"
+              @click="confirmAdd"
+            >
+              Tambah · {{ rupiah(addTarget.harga * addQty) }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Menu form sheet (admin) -->
+      <div
+        v-if="menuFormOpen"
+        class="fixed inset-0 z-50 flex items-end justify-center bg-black/50"
+        @click.self="menuFormOpen = false"
+      >
+        <div class="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-panel bg-white p-5 pb-8 shadow-glow fade-in">
+          <div class="mx-auto mb-3 h-1 w-10 rounded-full bg-bgmain"></div>
+          <h2 class="text-lg font-bold text-textprimary">
+            {{ menuForm.id ? 'Edit Item' : 'Tambah Item' }}
+          </h2>
+
+          <div class="mt-4 flex items-center gap-3">
+            <img
+              :src="menuForm.foto_url || fallbackImg"
+              alt="Preview foto"
+              class="h-16 w-16 rounded-full object-cover bg-bgmain"
+            />
+            <div class="min-w-0 flex-1 space-y-2">
+              <input
+                v-model="menuForm.foto_url"
+                type="url"
+                placeholder="https://... URL foto"
+                class="w-full rounded-input border border-bgmain bg-bgmain px-3 py-2 text-sm text-textprimary outline-none focus:border-primary"
+                aria-label="URL foto"
+              />
+              <label class="btn-press inline-block cursor-pointer rounded-pill bg-surfacedark px-4 py-2 text-xs font-bold text-white">
+                Upload foto
+                <input type="file" accept="image/*" class="hidden" @change="onPhotoUpload" />
+              </label>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <label class="mb-1 block text-sm font-bold text-textprimary" for="m-nama">Nama</label>
+            <input id="m-nama" v-model="menuForm.nama" type="text" maxlength="60" class="w-full rounded-input border border-bgmain bg-bgmain px-4 py-3 text-sm outline-none focus:border-primary" />
+          </div>
+          <div class="mt-3 grid grid-cols-2 gap-3">
+            <div>
+              <label class="mb-1 block text-sm font-bold text-textprimary" for="m-kat">Kategori</label>
+              <select id="m-kat" v-model="menuForm.kategori" class="w-full rounded-input border border-bgmain bg-bgmain px-3 py-3 text-sm outline-none focus:border-primary">
+                <option>Kopi</option>
+                <option>Teh</option>
+                <option>Kue</option>
+              </select>
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-bold text-textprimary" for="m-harga">Harga</label>
+              <input id="m-harga" v-model.number="menuForm.harga" type="number" min="0" step="500" class="w-full rounded-input border border-bgmain bg-bgmain px-3 py-3 text-sm outline-none focus:border-primary" />
+            </div>
+          </div>
+          <div class="mt-3 grid grid-cols-2 gap-3">
+            <div>
+              <label class="mb-1 block text-sm font-bold text-textprimary" for="m-stok">Stok</label>
+              <select id="m-stok" v-model="menuForm.status_stok" class="w-full rounded-input border border-bgmain bg-bgmain px-3 py-3 text-sm outline-none focus:border-primary">
+                <option value="tersedia">Tersedia</option>
+                <option value="habis">Habis</option>
+              </select>
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-bold text-textprimary" for="m-rating">Rating</label>
+              <input id="m-rating" v-model.number="menuForm.rating" type="number" min="0" max="5" step="0.1" class="w-full rounded-input border border-bgmain bg-bgmain px-3 py-3 text-sm outline-none focus:border-primary" />
+            </div>
+          </div>
+
+          <p v-if="menuFormError" class="mt-3 text-xs font-semibold text-primary">{{ menuFormError }}</p>
+
+          <div class="mt-5 flex gap-3">
+            <button
+              type="button"
+              class="btn-press flex-1 rounded-pill bg-bgmain py-3.5 text-sm font-bold text-textprimary"
+              @click="menuFormOpen = false"
+            >Batal</button>
+            <button
+              type="button"
+              class="btn-press flex-1 rounded-pill bg-primary py-3.5 text-sm font-bold text-white"
+              @click="saveMenuItem"
+            >Simpan</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script>
+    // ===== Config =====
+    const USE_MOCK = true; // false = pakai GAS (isi GAS_URL + deploy Web App)
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbwITc_iXn5hZf5wkNWidS1cjZSZ8ApvXGLS1wiDJ2JKFSsHqFPASSXqS_utoA29D1P-/exec'; // Dev endpoint
+    const WA_NUMBER = '628114348820'; // nomor penjaga warkop
+    const SERVICE_FEE = 0;
+    const FALLBACK_IMG = 'logo.jpg';
+    const ADMIN_PASSWORD = 'harum129';
+    const LS_MENUS = 'wh_menus';
+    const LS_ORDERS = 'wh_orders';
+    const SS_ADMIN = 'wh_admin';
+    const LS_CLIENT = 'wh_client_id';
+
+    function getClientId() {
+      try {
+        var id = localStorage.getItem(LS_CLIENT);
+        if (!id) {
+          id = 'c' + Date.now() + Math.random().toString(36).slice(2, 8);
+          localStorage.setItem(LS_CLIENT, id);
+        }
+        return id;
+      } catch (_) {
+        return 'anon';
+      }
+    }
+
+    // ===== Storage helpers =====
+    function lsGet(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch (_) {
+        return fallback;
+      }
+    }
+    function lsSet(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+    function daysAgoISO(n, hour) {
+      const d = new Date();
+      d.setDate(d.getDate() - n);
+      d.setHours(hour || 10, 0, 0, 0);
+      return d.toISOString();
+    }
+    function seedOrders() {
+      return [
+        { order_id: 'ORD100001', timestamp: daysAgoISO(0, 9), nama_pelanggan: 'Budi Santoso', no_meja: '3', detail_pesanan: '[]', subtotal: 35000, service_fee: 0, total_bayar: 35000, status_pembayaran: 'belum' },
+        { order_id: 'ORD100002', timestamp: daysAgoISO(0, 12), nama_pelanggan: 'Siti Aminah', no_meja: '7', detail_pesanan: '[]', subtotal: 48000, service_fee: 0, total_bayar: 48000, status_pembayaran: 'lunas' },
+        { order_id: 'ORD100003', timestamp: daysAgoISO(1, 11), nama_pelanggan: 'Andi Wijaya', no_meja: '1', detail_pesanan: '[]', subtotal: 27000, service_fee: 0, total_bayar: 27000, status_pembayaran: 'belum' },
+        { order_id: 'ORD100004', timestamp: daysAgoISO(3, 15), nama_pelanggan: 'Budi Santoso', no_meja: '5', detail_pesanan: '[]', subtotal: 62000, service_fee: 0, total_bayar: 62000, status_pembayaran: 'lunas' },
+        { order_id: 'ORD100005', timestamp: daysAgoISO(8, 10), nama_pelanggan: 'Dewi Lestari', no_meja: '2', detail_pesanan: '[]', subtotal: 41000, service_fee: 0, total_bayar: 41000, status_pembayaran: 'belum' },
+        { order_id: 'ORD100006', timestamp: daysAgoISO(20, 14), nama_pelanggan: 'Rudi Hartono', no_meja: '9', detail_pesanan: '[]', subtotal: 55000, service_fee: 0, total_bayar: 55000, status_pembayaran: 'lunas' },
+      ];
+    }
+
+    // ===== Mock respon (format identik backend) =====
+    const MOCK_MENUS = {
+      success: true,
+      data: [
+        { id: 'M001', nama: 'Kopi Susu Aren', kategori: 'Kopi', harga: 18000, foto_url: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=400&h=400&fit=crop', status_stok: 'tersedia', rating: 4.9 },
+        { id: 'M002', nama: 'Americano', kategori: 'Kopi', harga: 15000, foto_url: 'https://images.unsplash.com/photo-1551030173-122aabc4489c?w=400&h=400&fit=crop', status_stok: 'tersedia', rating: 4.8 },
+        { id: 'M003', nama: 'Cappuccino', kategori: 'Kopi', harga: 20000, foto_url: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=400&h=400&fit=crop', status_stok: 'tersedia', rating: 4.7 },
+        { id: 'M004', nama: 'Es Kopi Gula Batu', kategori: 'Kopi', harga: 19000, foto_url: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=400&h=400&fit=crop', status_stok: 'habis', rating: 4.6 },
+        { id: 'M005', nama: 'Teh Tarik', kategori: 'Teh', harga: 12000, foto_url: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&h=400&fit=crop', status_stok: 'tersedia', rating: 4.8 },
+        { id: 'M006', nama: 'Es Teh Manis', kategori: 'Teh', harga: 8000, foto_url: 'https://images.unsplash.com/photo-1499638673689-79a0b5115d87?w=400&h=400&fit=crop', status_stok: 'tersedia', rating: 4.5 },
+        { id: 'M007', nama: 'Lemon Tea', kategori: 'Teh', harga: 14000, foto_url: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&h=400&fit=crop', status_stok: 'tersedia', rating: 4.6 },
+        { id: 'M008', nama: 'Matcha Latte', kategori: 'Teh', harga: 20000, foto_url: 'https://images.unsplash.com/photo-1515823064-d6e0c04616a7?w=400&h=400&fit=crop', status_stok: 'tersedia', rating: 4.9 },
+        { id: 'M009', nama: 'Pisang Goreng', kategori: 'Kue', harga: 10000, foto_url: 'https://images.unsplash.com/photo-1630409346699-7940c4d8115e?w=400&h=400&fit=crop', status_stok: 'tersedia', rating: 4.7 },
+        { id: 'M010', nama: 'Roti Bakar Coklat', kategori: 'Kue', harga: 15000, foto_url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=400&fit=crop', status_stok: 'tersedia', rating: 4.8 },
+        { id: 'M011', nama: 'Kue Lapis', kategori: 'Kue', harga: 9000, foto_url: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&h=400&fit=crop', status_stok: 'tersedia', rating: 4.5 },
+        { id: 'M012', nama: 'Donat Gula', kategori: 'Kue', harga: 7000, foto_url: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=400&h=400&fit=crop', status_stok: 'tersedia', rating: 4.6 },
+      ],
+    };
+
+    // ===== Helpers =====
+    function sanitizeText(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function compressImage(file, maxSide) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = reject;
+        reader.onload = () => {
+          const img = new Image();
+          img.onerror = reject;
+          img.onload = () => {
+            let w = img.width;
+            let h = img.height;
+            const scale = Math.min(1, maxSide / Math.max(w, h));
+            w = Math.round(w * scale);
+            h = Math.round(h * scale);
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', 0.82));
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // ===== API layer (mock localStorage / siap GAS) =====
+    async function apiGetMenus() {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 400));
+        const saved = lsGet(LS_MENUS, null);
+        if (saved && Array.isArray(saved) && saved.length) {
+          return { success: true, data: saved };
+        }
+        lsSet(LS_MENUS, MOCK_MENUS.data);
+        return MOCK_MENUS;
+      }
+      try {
+        const res = await fetch(GAS_URL + '?action=menus', { redirect: 'follow' });
+        return await res.json();
+      } catch (e) {
+        console.error(e);
+        return { success: false, data: [] };
+      }
+    }
+
+    async function apiSaveMenu(item) {
+      if (USE_MOCK) {
+        const list = lsGet(LS_MENUS, MOCK_MENUS.data.slice());
+        const idx = list.findIndex((m) => m.id === item.id);
+        if (idx >= 0) list[idx] = item;
+        else list.unshift(item);
+        lsSet(LS_MENUS, list);
+        return { success: true, data: list };
+      }
+      try {
+        const res = await fetch(GAS_URL, {
+          method: 'POST',
+          redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'menu_save', item, admin_key: ADMIN_PASSWORD }),
+        });
+        return await res.json();
+      } catch (e) {
+        console.error(e);
+        return { success: false, message: 'Gagal menyimpan menu' };
+      }
+    }
+
+    async function apiDeleteMenu(id) {
+      if (USE_MOCK) {
+        let list = lsGet(LS_MENUS, MOCK_MENUS.data.slice());
+        list = list.filter((m) => m.id !== id);
+        lsSet(LS_MENUS, list);
+        return { success: true, data: list };
+      }
+      try {
+        const res = await fetch(GAS_URL, {
+          method: 'POST',
+          redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'menu_delete', id, admin_key: ADMIN_PASSWORD }),
+        });
+        return await res.json();
+      } catch (e) {
+        console.error(e);
+        return { success: false, message: 'Gagal menghapus menu' };
+      }
+    }
+
+    async function apiGetOrders() {
+      if (USE_MOCK) {
+        let list = lsGet(LS_ORDERS, null);
+        if (!list) {
+          list = seedOrders();
+          lsSet(LS_ORDERS, list);
+        }
+        return { success: true, data: list };
+      }
+      try {
+        const res = await fetch(GAS_URL + '?action=orders', { redirect: 'follow' });
+        return await res.json();
+      } catch (e) {
+        console.error(e);
+        return { success: false, data: [] };
+      }
+    }
+
+    async function apiSubmitOrder(payload) {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 800));
+        const orderId = 'ORD' + String(Date.now()).slice(-8);
+        const list = lsGet(LS_ORDERS, seedOrders());
+        list.unshift({
+          order_id: orderId,
+          timestamp: payload.timestamp,
+          nama_pelanggan: payload.nama_pelanggan,
+          no_meja: payload.no_meja,
+          detail_pesanan: payload.detail_pesanan,
+          subtotal: payload.subtotal,
+          service_fee: payload.service_fee,
+          total_bayar: payload.total_bayar,
+          status_pembayaran: 'belum',
+        });
+        lsSet(LS_ORDERS, list);
+        return { success: true, order_id: orderId, message: 'Pesanan tersimpan' };
+      }
+      try {
+        const res = await fetch(GAS_URL, {
+          method: 'POST',
+          redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(Object.assign({}, payload, { client_id: getClientId() })),
+        });
+        return await res.json();
+      } catch (e) {
+        console.error(e);
+        return { success: false, message: 'Gagal menghubungi server' };
+      }
+    }
+
+    async function apiSetPayment(orderId, status) {
+      if (USE_MOCK) {
+        const list = lsGet(LS_ORDERS, []);
+        const o = list.find((x) => x.order_id === orderId);
+        if (o) o.status_pembayaran = status;
+        lsSet(LS_ORDERS, list);
+        return { success: true, data: list };
+      }
+      try {
+        const res = await fetch(GAS_URL, {
+          method: 'POST',
+          redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'set_payment', order_id: orderId, status, admin_key: ADMIN_PASSWORD }),
+        });
+        return await res.json();
+      } catch (e) {
+        console.error(e);
+        return { success: false, message: 'Gagal memperbarui status' };
+      }
+    }
+
+    // ===== Vue App =====
+    const { createApp } = Vue;
+
+    createApp({
+      data() {
+        return {
+          loading: true,
+          menus: [],
+          search: '',
+          activeCategory: 'Semua',
+          cart: [],
+          form: { nama: '', noMeja: '' },
+          errors: {},
+          submitting: false,
+          submitError: '',
+          addTarget: null,
+          addQty: 1,
+          addNote: '',
+          menuOpen: false,
+          hash: '#/',
+          lastOrder: {},
+          fallbackImg: FALLBACK_IMG,
+          isAdmin: false,
+          adminPassword: '',
+          loginError: '',
+          adminTab: 'menu',
+          orders: [],
+          txSearch: '',
+          txPeriod: 'all',
+          txStatus: 'all',
+          txPeriods: [
+            { key: 'all', label: 'Semua' },
+            { key: 'today', label: 'Hari Ini' },
+            { key: 'month', label: 'Bulan Ini' },
+          ],
+          txStatuses: [
+            { key: 'all', label: 'Semua Status' },
+            { key: 'belum', label: 'Belum Lunas' },
+            { key: 'lunas', label: 'Lunas' },
+          ],
+          menuFormOpen: false,
+          menuFormError: '',
+          menuForm: {
+            id: '',
+            nama: '',
+            kategori: 'Kopi',
+            harga: 0,
+            foto_url: '',
+            status_stok: 'tersedia',
+            rating: 4.5,
+          },
+          categories: ['Semua', 'Kopi', 'Teh', 'Kue'],
+          categoriesIcon: [
+            { name: 'Kopi', filter: 'Kopi', icon: '☕' },
+            { name: 'Teh', filter: 'Teh', icon: '🍵' },
+            { name: 'Kue', filter: 'Kue', icon: '🍰' },
+            { name: 'Semua', filter: 'Semua', icon: '🍽️' },
+          ],
+        };
+      },
+      computed: {
+        route() {
+          const h = (this.hash || '#/').replace('#/', '');
+          if (h === 'keranjang') return 'cart';
+          if (h === 'sukses') return 'success';
+          if (h === 'admin') return 'admin';
+          return 'catalog';
+        },
+        filteredMenus() {
+          let list = this.menus;
+          if (this.activeCategory !== 'Semua') {
+            list = list.filter((m) => m.kategori === this.activeCategory);
+          }
+          const q = this.search.trim().toLowerCase();
+          if (q) {
+            list = list.filter((m) => m.nama.toLowerCase().includes(q));
+          }
+          return list;
+        },
+        cartCount() {
+          return this.cart.reduce((s, l) => s + l.qty, 0);
+        },
+        subtotal() {
+          return this.cart.reduce((s, l) => s + l.harga * l.qty, 0);
+        },
+        serviceFee() {
+          return SERVICE_FEE;
+        },
+        total() {
+          return this.subtotal + this.serviceFee;
+        },
+        lastOrderLines() {
+          try {
+            return JSON.parse(this.lastOrder.detail_pesanan || '[]');
+          } catch {
+            return [];
+          }
+        },
+        filteredOrders() {
+          let list = this.orders.slice();
+          const q = this.txSearch.trim().toLowerCase();
+          if (q) {
+            list = list.filter((o) => String(o.nama_pelanggan || '').toLowerCase().includes(q));
+          }
+          const now = new Date();
+          if (this.txPeriod === 'today') {
+            list = list.filter((o) => {
+              const d = new Date(o.timestamp);
+              return (
+                d.getFullYear() === now.getFullYear() &&
+                d.getMonth() === now.getMonth() &&
+                d.getDate() === now.getDate()
+              );
+            });
+          } else if (this.txPeriod === 'month') {
+            list = list.filter((o) => {
+              const d = new Date(o.timestamp);
+              return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+            });
+          }
+          if (this.txStatus !== 'all') {
+            list = list.filter((o) => o.status_pembayaran === this.txStatus);
+          }
+          list.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+          return list;
+        },
+        totalUtang() {
+          return this.filteredOrders
+            .filter((o) => o.status_pembayaran !== 'lunas')
+            .reduce((s, o) => s + Number(o.total_bayar || 0), 0);
+        },
+      },
+      watch: {
+        hash() {
+          this.menuOpen = false;
+          window.scrollTo(0, 0);
+          this.guardAdmin();
+        },
+      },
+      created() {
+        this.hash = window.location.hash || '#/';
+        window.addEventListener('hashchange', () => {
+          this.hash = window.location.hash || '#/';
+          this.guardAdmin();
+        });
+        try {
+          this.isAdmin = sessionStorage.getItem(SS_ADMIN) === '1';
+        } catch (_) {
+          this.isAdmin = false;
+        }
+        this.loadMenus();
+        if (this.isAdmin) this.loadOrders();
+        try {
+          const saved = localStorage.getItem('wh_cart');
+          if (saved) this.cart = JSON.parse(saved);
+        } catch (_) {}
+        this.guardAdmin();
+      },
+      methods: {
+        go(path) {
+          window.location.hash = path;
+        },
+        rupiah(n) {
+          return 'Rp' + Number(n || 0).toLocaleString('id-ID');
+        },
+        formatDate(iso) {
+          try {
+            return new Date(iso).toLocaleDateString('id-ID', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            });
+          } catch (_) {
+            return iso;
+          }
+        },
+        adminLogin() {
+          this.loginError = '';
+          if (this.adminPassword === ADMIN_PASSWORD) {
+            this.isAdmin = true;
+            this.adminPassword = '';
+            this.loginError = '';
+            try {
+              sessionStorage.setItem(SS_ADMIN, '1');
+            } catch (_) {}
+            this.menuOpen = false;
+            this.loadOrders();
+            this.go('#/admin');
+          } else {
+            this.loginError = 'Password salah.';
+          }
+        },
+        adminLogout() {
+          this.isAdmin = false;
+          this.menuOpen = false;
+          try {
+            sessionStorage.removeItem(SS_ADMIN);
+          } catch (_) {}
+          if (this.route === 'admin') this.go('#/');
+        },
+        guardAdmin() {
+          if (this.route === 'admin' && !this.isAdmin) {
+            this.menuOpen = true;
+            this.go('#/');
+          }
+        },
+        async loadMenus() {
+          this.loading = true;
+          const res = await apiGetMenus();
+          this.menus = Array.isArray(res.data) ? res.data : [];
+          this.loading = false;
+        },
+        async loadOrders() {
+          const res = await apiGetOrders();
+          this.orders = Array.isArray(res.data) ? res.data : [];
+        },
+        openMenuForm(item) {
+          this.menuFormError = '';
+          if (item) {
+            this.menuForm = {
+              id: item.id,
+              nama: item.nama,
+              kategori: item.kategori,
+              harga: Number(item.harga) || 0,
+              foto_url: item.foto_url || '',
+              status_stok: item.status_stok || 'tersedia',
+              rating: Number(item.rating) || 4.5,
+            };
+          } else {
+            this.menuForm = {
+              id: '',
+              nama: '',
+              kategori: 'Kopi',
+              harga: 0,
+              foto_url: '',
+              status_stok: 'tersedia',
+              rating: 4.5,
+            };
+          }
+          this.menuFormOpen = true;
+        },
+        async saveMenuItem() {
+          this.menuFormError = '';
+          const nama = sanitizeText(this.menuForm.nama.trim());
+          if (nama.length < 2) {
+            this.menuFormError = 'Nama wajib diisi.';
+            return;
+          }
+          const harga = Number(this.menuForm.harga);
+          if (!isFinite(harga) || harga < 0) {
+            this.menuFormError = 'Harga tidak valid.';
+            return;
+          }
+          const item = {
+            id: this.menuForm.id || 'M' + String(Date.now()).slice(-8),
+            nama,
+            kategori: this.menuForm.kategori,
+            harga: Math.round(harga),
+            foto_url: this.menuForm.foto_url || FALLBACK_IMG,
+            status_stok: this.menuForm.status_stok,
+            rating: Number(this.menuForm.rating) || 4.5,
+          };
+          const res = await apiSaveMenu(item);
+          if (!res || res.success !== true) {
+            this.menuFormError = (res && res.message) || 'Gagal menyimpan.';
+            return;
+          }
+          this.menus = Array.isArray(res.data) ? res.data : [];
+          this.menuFormOpen = false;
+        },
+        async deleteMenuItem(item) {
+          if (!confirm('Hapus "' + item.nama + '" dari menu?')) return;
+          const res = await apiDeleteMenu(item.id);
+          if (res && res.success === true) {
+            this.menus = Array.isArray(res.data) ? res.data : [];
+          }
+        },
+        onPhotoUpload(e) {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          if (!file.type.startsWith('image/')) {
+            this.menuFormError = 'File harus berupa gambar.';
+            return;
+          }
+          compressImage(file, 480)
+            .then((dataUrl) => {
+              this.menuForm.foto_url = dataUrl;
+              this.menuFormError = '';
+            })
+            .catch(() => {
+              this.menuFormError = 'Gagal memproses gambar.';
+            });
+          e.target.value = '';
+        },
+        async togglePayment(order) {
+          const next = order.status_pembayaran === 'lunas' ? 'belum' : 'lunas';
+          const res = await apiSetPayment(order.order_id, next);
+          if (res && res.success === true) {
+            this.orders = Array.isArray(res.data) ? res.data : this.orders;
+            const o = this.orders.find((x) => x.order_id === order.order_id);
+            if (o) o.status_pembayaran = next;
+            else order.status_pembayaran = next;
+          }
+        },
+        openAdd(item) {
+          this.addTarget = item;
+          this.addQty = 1;
+          this.addNote = '';
+        },
+        confirmAdd() {
+          if (!this.addTarget) return;
+          const note = sanitizeText(this.addNote.trim());
+          const id = this.addTarget.id;
+          const existing = this.cart.find((l) => l.id === id && l.catatan === note);
+          if (existing) {
+            existing.qty += this.addQty;
+          } else {
+            this.cart.push({
+              key: id + '_' + Date.now(),
+              id: this.addTarget.id,
+              nama: this.addTarget.nama,
+              harga: this.addTarget.harga,
+              foto_url: this.addTarget.foto_url,
+              qty: this.addQty,
+              catatan: note,
+            });
+          }
+          this.persistCart();
+          this.addTarget = null;
+        },
+        changeQty(key, delta) {
+          const idx = this.cart.findIndex((l) => l.key === key);
+          if (idx < 0) return;
+          const line = this.cart[idx];
+          if (line.qty + delta <= 0) {
+            if (confirm('Hapus "' + line.nama + '" dari keranjang?')) {
+              this.cart.splice(idx, 1);
+            }
+            return;
+          }
+          line.qty += delta;
+          this.persistCart();
+        },
+        persistCart() {
+          try {
+            localStorage.setItem('wh_cart', JSON.stringify(this.cart));
+          } catch (_) {}
+        },
+        validate() {
+          this.errors = {};
+          const nama = this.form.nama.trim();
+          if (nama.length < 3) this.errors.nama = 'Nama minimal 3 karakter.';
+          if (!this.form.noMeja) this.errors.noMeja = 'Nomor meja wajib dipilih.';
+          if (this.cart.length === 0) this.errors.cart = 'Keranjang kosong.';
+          return Object.keys(this.errors).length === 0;
+        },
+        buildWaText(orderId) {
+          const lines = this.cart.map(
+            (l, i) =>
+              i +
+              1 +
+              '. ' +
+              l.nama +
+              ' x' +
+              l.qty +
+              ' = ' +
+              this.rupiah(l.harga * l.qty) +
+              (l.catatan ? ' (catatan: ' + l.catatan + ')' : '')
+          );
+          return (
+            '*Pesanan Warkop Harum 129*' +
+            '\nOrder: #' +
+            orderId +
+            '\nNama: ' +
+            sanitizeText(this.form.nama.trim()) +
+            '\nMeja: ' +
+            this.form.noMeja +
+            '\n---' +
+            '\n' +
+            lines.join('\n') +
+            '\n---' +
+            '\nSubtotal: ' +
+            this.rupiah(this.subtotal) +
+            '\nTotal: ' +
+            this.rupiah(this.total)
+          );
+        },
+        async submitOrder() {
+          if (this.submitting) return;
+          this.submitError = '';
+          if (!this.validate()) return;
+          this.submitting = true;
+
+          const payload = {
+            action: 'submit_order',
+            timestamp: new Date().toISOString(),
+            nama_pelanggan: sanitizeText(this.form.nama.trim()),
+            no_meja: sanitizeText(this.form.noMeja),
+            detail_pesanan: JSON.stringify(
+              this.cart.map((l) => ({
+                id: l.id,
+                nama: l.nama,
+                harga: l.harga,
+                qty: l.qty,
+                catatan: l.catatan,
+                foto_url: l.foto_url,
+              }))
+            ),
+            subtotal: this.subtotal,
+            service_fee: this.serviceFee,
+            total_bayar: this.total,
+            items: this.cart.map((l) => ({
+              id: l.id,
+              nama: l.nama,
+              qty: l.qty,
+              harga: l.harga,
+              catatan: l.catatan,
+            })),
+          };
+
+          const res = await apiSubmitOrder(payload);
+          this.submitting = false;
+
+          if (!res || res.success !== true) {
+            this.submitError = (res && res.message) || 'Gagal mengirim pesanan. Coba lagi.';
+            return;
+          }
+
+          const orderId = res.order_id || 'ORD' + String(Date.now()).slice(-8);
+          this.lastOrder = {
+            order_id: orderId,
+            nama_pelanggan: payload.nama_pelanggan,
+            no_meja: payload.no_meja,
+            detail_pesanan: payload.detail_pesanan,
+            subtotal: payload.subtotal,
+            service_fee: payload.service_fee,
+            total_bayar: payload.total_bayar,
+          };
+
+          const waText = this.buildWaText(orderId);
+          const waLink = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(waText);
+          window.open(waLink, '_blank');
+
+          this.cart = [];
+          this.persistCart();
+          this.form = { nama: '', noMeja: '' };
+          if (this.isAdmin) this.loadOrders();
+          this.go('#/sukses');
+        },
+      },
+    }).mount('#app');
+  </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+node_modules/
+.firebase/
+firebase-debug.log
+*.log
+.DS_Store
+.clasprc.json
+.env
+.env.*
+dist/
+*.zip
